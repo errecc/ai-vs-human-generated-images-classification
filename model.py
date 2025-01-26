@@ -1,4 +1,4 @@
-import pytorch_lightning
+import pytorch_lightning as pl
 import opendatasets as od
 import torch
 from PIL import Image
@@ -7,6 +7,8 @@ from torch.utils.data import Dataset, DataLoader
 import os
 import pandas as pd
 import torchvision.transforms as T
+import torchvision
+from torchvision.models import ResNet18_Weights
 
 
 class AiVsHumanDataset(Dataset):
@@ -22,7 +24,8 @@ class AiVsHumanDataset(Dataset):
             self.paths = [os.path.join(path, p) for p in data["file_name"]]
             self.labels = [i for i in data["label"]]
         # Define transform for images
-        self.transform = T.Compose([T.Resize(512),
+        self.transform = T.Compose([T.CenterCrop(224),
+                                    T.Resize(256),
                                     T.ToTensor()])
 
     def __len__(self):
@@ -36,6 +39,41 @@ class AiVsHumanDataset(Dataset):
         return X, self.labels[idx]
 
 
-dataset = AiVsHumanDataset()
+class AiVsHumanClassifier(pl.LightningModule):
+    def __init__(self):
+        super().__init__()
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+        self.pretrainded_model = torchvision.models.resnet50(pretrained=True)
+        # freeze layers
+        self.pretrainded_model.eval()
+        for param in self.pretrainded_model.parameters():
+            param.requires_grad = False
+            print(param.shape)
+        self.pretrainded_model.fc = torch.nn.Linear(2048, 2)
+
+    def configure_optimizers(self):
+        optim = torch.optim.Adam(self.pretrainded_model.parameters())
+        return optim
+
+    def forward(self, x):
+        return self.pretrainded_model(x)
+
+    def training_step(self, batch, batch_idx):
+        inputs, label = batch
+        out = self(inputs)
+        loss = self.loss_fn(out, label)
+        self.log("train_loss", loss, prog_bar=True)
+        return loss
+
+
 # Download the data
 od.download("https://www.kaggle.com/datasets/alessandrasala79/ai-vs-human-generated-dataset")
+
+
+
+
+
+
+
+
+
