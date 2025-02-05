@@ -25,8 +25,10 @@ class AiVsHumanDataset(Dataset):
             self.labels = [i for i in data["label"]]
         # Define transform for images
         self.transform = T.Compose([T.CenterCrop(224),
-                                    T.Resize(256),
-                                    T.ToTensor()])
+                                    #T.Resize([64, 3]),
+                                    T.Grayscale(num_output_channels = 3),
+                                    T.ToTensor(),
+                                    T.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
     def __len__(self):
         return len(self.paths)
@@ -62,18 +64,14 @@ class AiVsHumanClassifier(pl.LightningModule):
         inputs, label = batch
         out = self(inputs)
         loss = self.loss_fn(out, label)
-        self.log("train_loss", loss, prog_bar=True)
+        self.log("train_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
         return loss
 
 
 # Download the data
 od.download("https://www.kaggle.com/datasets/alessandrasala79/ai-vs-human-generated-dataset")
-
-
-
-
-
-
-
-
-
+dataset = AiVsHumanDataset()
+dataloader = DataLoader(dataset, shuffle=True)
+model = AiVsHumanClassifier()
+trainer = pl.Trainer()
+trainer.fit(model, dataloader)
