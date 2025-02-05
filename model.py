@@ -73,5 +73,5 @@ od.download("https://www.kaggle.com/datasets/alessandrasala79/ai-vs-human-genera
 dataset = AiVsHumanDataset()
 dataloader = DataLoader(dataset, shuffle=True)
 model = AiVsHumanClassifier()
-trainer = pl.Trainer()
-trainer.fit(model, dataloader)
+trainer = pl.Trainer(max_epochs=10)
+trainer.fit(model, dataloader, torch.moveaxis)
